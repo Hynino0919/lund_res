@@ -111,6 +111,7 @@ const map = new OlMap({ // <--- 已修正命名冲突
 
 map.addOverlay(overlay);
 
+
 // 5. Select 交互 (只用于高亮显示)
 const selectInteraction = new Select({
     style: highlightStyle,
@@ -304,7 +305,34 @@ draw.on('drawend', function (event) {
     }
     drawSource.clear();
 });
+map.on('singleclick', function (evt) {
+    const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
+        // 判断是否是餐厅点
+        if (layer === restaurantsLayer) {
+            return feature;
+        }
+        return null;
+    });
 
+    if (feature) {
+        const props = feature.getProperties();
+        console.log(props)
+        const name = props.name || 'N/A';
+        const openHours = props.open_hours || 'N/A';
+        const rating = props.rating || 'N/A';
+        const price = props.price_rang || 'N/A';
+        const type = props.type || 'N/A';
+
+        content.innerHTML = `
+      <h3>${name}</h3>
+      <p><strong>Type:</strong>${type}</p>
+      <p><strong>Opening hours:</strong> ${openHours}</p>
+      <p><strong>Rating:</strong> ${rating}</p>
+      <p><strong>Price:</strong> ${price}</p>
+    `;
+        overlay.setPosition(evt.coordinate);
+    }
+});
 
 // **********************************************
 // 9. 数据加载
