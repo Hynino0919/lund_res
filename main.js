@@ -24,7 +24,7 @@ const poiStyle = new Style({
         stroke: new Stroke({color: 'red', width: 2})
     })
 });
-
+//hahaha
 const highlightStyle = new Style({
     image: new Circle({
         radius: 4,
