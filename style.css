@@ -23,6 +23,7 @@ html, body {
   /* 新增：固定大小和滚动条 */
   max-width: 400px; /* 弹窗最大宽度 */
   max-height: 300px; /* 弹窗最大高度 */
+  min-width: 300px;
 }
 
 /* 新增：为弹窗内容区设置滚动 */

@@ -55,7 +55,20 @@ const boundaryLayer = new VectorLayer({
     source: boundarySource,
     style: boundaryStyle
 });
+const roadStyle = new Style({
+    stroke: new Stroke({
+        color: 'rgba(128, 128, 128, 0.8)', // 灰色半透明的线
+        width: 1.5
+    })
+});
+// 创建道路图层的数据源
+const roadSource = new VectorSource();
 
+// 创建道路图层本身
+const roadLayer = new VectorLayer({
+    source: roadSource,
+    style: roadStyle
+});
 const drawSource = new VectorSource();
 const drawLayer = new VectorLayer({
     source: drawSource,
@@ -87,6 +100,7 @@ const map = new OlMap({ // <--- 已修正命名冲突
     target: 'map',
     layers: [
         new TileLayer({source: new OSM()}),
+        roadLayer,
         boundaryLayer,      // **** 新增 ****** 把边界图层加在餐厅图层下面
         restaurantsLayer,   // 修改了变量名
         drawLayer,
@@ -256,7 +270,7 @@ draw.on('drawend', function (event) {
 
         content.innerHTML = `
             <h3>Selection Results</h3>
-            <h4>Time of selection: ${checkTime.toLocaleString()}</h4>
+            <h4>Time now: ${checkTime.toLocaleString()}</h4>
             <p><strong>Selected restaurants:</strong> ${selected.length}</p>
             <p><strong>Open now:</strong> ${openNowCount} ${openNamesHtml}</p>
             <hr>
@@ -295,6 +309,23 @@ draw.on('drawend', function (event) {
 // **********************************************
 // 9. 数据加载
 // **********************************************
+function loadRoadsData() {
+    // typeName 已更新为您提供的图层名。
+    const wfsUrl = '/geoserver-proxy/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=group6:roads_all_wgs84&outputFormat=application/json';
+
+    fetch(wfsUrl)
+        .then(response => response.json())
+        .then(data => {
+            const features = new GeoJSON().readFeatures(data, {
+                dataProjection: 'EPSG:4326', // 修正了WGS84对应的投影代码
+                featureProjection: 'EPSG:3857',
+            });
+            roadSource.addFeatures(features);
+        })
+        .catch(error => {
+            console.error("道路数据加载失败：", error);
+        });
+}
 
 function loadRestaurantsData() {
     const wfsUrl = '/geoserver-proxy/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=group6:restaurantsnew&outputFormat=application/json';
@@ -338,3 +369,4 @@ function loadBoundaryData() {
 // 页面加载时，同时加载两种数据
 loadRestaurantsData();
 loadBoundaryData();
+loadRoadsData();
