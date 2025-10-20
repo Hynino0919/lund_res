@@ -20,8 +20,18 @@ html, body {
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 250px;
+  /* 新增：固定大小和滚动条 */
+  max-width: 400px; /* 弹窗最大宽度 */
+  max-height: 300px; /* 弹窗最大高度 */
 }
+
+/* 新增：为弹窗内容区设置滚动 */
+#popup-content {
+  max-height: 250px; /* 内容区的最大高度，略小于弹窗高度以容纳标题 */
+  overflow-y: auto; /* 当内容垂直溢出时，显示滚动条 */
+  padding-right: 10px; /* 为滚动条留出空间，防止内容遮挡 */
+}
+
 .ol-popup:after, .ol-popup:before {
   top: 100%;
   border: solid transparent;
