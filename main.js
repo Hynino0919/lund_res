@@ -1,5 +1,5 @@
 import './style.css';
-import {Map as OlMap, View} from 'ol'; // <--- 已修正命名冲突
+import {Map as OlMap, View} from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import {fromLonLat} from 'ol/proj';
@@ -13,7 +13,7 @@ import Select from 'ol/interaction/Select';
 import {altKeyOnly, never} from 'ol/events/condition';
 import Overlay from 'ol/Overlay';
 
-// 1. 常量和样式定义
+// 1. constant variable and style
 const lund_lon_lat = [13.1932, 55.7058];
 const lund_center = fromLonLat(lund_lon_lat);
 
@@ -33,8 +33,6 @@ const highlightStyle = new Style({
     }),
 });
 
-// **** 新增 ******
-// 为新的边界图层定义样式
 const boundaryStyle = new Style({
     stroke: new Stroke({
         color: 'rgb(20,20,21)',
@@ -42,33 +40,32 @@ const boundaryStyle = new Style({
     })
 });
 
-// 2. 数据源和图层创建
-const restaurantsSource = new VectorSource(); // 餐厅图层的数据源
-const restaurantsLayer = new VectorLayer({
-    source: restaurantsSource,
-    style: poiStyle
-});
-
-// **** 新增 ******
-const boundarySource = new VectorSource(); // 边界图层的数据源
-const boundaryLayer = new VectorLayer({
-    source: boundarySource,
-    style: boundaryStyle
-});
 const roadStyle = new Style({
     stroke: new Stroke({
         color: 'rgba(128, 128, 128, 0.8)', // 灰色半透明的线
         width: 1.5
     })
 });
-// 创建道路图层的数据源
-const roadSource = new VectorSource();
 
-// 创建道路图层本身
+// 2. data source and create layer
+const restaurantsSource = new VectorSource();
+const restaurantsLayer = new VectorLayer({
+    source: restaurantsSource,
+    style: poiStyle
+});
+
+const boundarySource = new VectorSource(); // 边界图层的数据源
+const boundaryLayer = new VectorLayer({
+    source: boundarySource,
+    style: boundaryStyle
+});
+
+const roadSource = new VectorSource();
 const roadLayer = new VectorLayer({
     source: roadSource,
     style: roadStyle
 });
+
 const drawSource = new VectorSource();
 const drawLayer = new VectorLayer({
     source: drawSource,
@@ -83,26 +80,25 @@ const resultLayer = new VectorLayer({
     source: resultSource
 });
 
-// 3. HTML 元素和 Overlay
+// 3. HTML and Overlay
 const container = document.getElementById('popup');
 const content = document.getElementById('popup-content');
 const closer = document.getElementById('popup-closer');
 const clearButton = document.getElementById('clear-selection');
-//
 const overlay = new Overlay({
     element: container,
     autoPan: true,
     autoPanAnimation: {duration: 250},
 });
 
-// 4. 初始化地图
-const map = new OlMap({ // <--- 已修正命名冲突
+// 4. init map
+const map = new OlMap({
     target: 'map',
     layers: [
         new TileLayer({source: new OSM()}),
         roadLayer,
-        boundaryLayer,      // **** 新增 ****** 把边界图层加在餐厅图层下面
-        restaurantsLayer,   // 修改了变量名
+        boundaryLayer,
+        restaurantsLayer,
         drawLayer,
         resultLayer
     ],
@@ -111,17 +107,16 @@ const map = new OlMap({ // <--- 已修正命名冲突
 
 map.addOverlay(overlay);
 
-
-// 5. Select 交互 (只用于高亮显示)
+// 5. Select
 const selectInteraction = new Select({
     style: highlightStyle,
-    layers: [restaurantsLayer], // 只高亮餐厅
+    layers: [restaurantsLayer],
     condition: never
 });
 map.addInteraction(selectInteraction);
 const selectedFeatures = selectInteraction.getFeatures();
 
-// 6. Draw 交互（绘制矩形）
+// 6. Draw
 const draw = new Draw({
     source: drawSource,
     type: 'Circle',
@@ -132,7 +127,7 @@ draw.setActive(false);
 map.addInteraction(draw);
 
 
-// ... (辅助函数部分没有变化，这里省略) ...
+// 7. spatial calculation functions
 function parsePriceRange(rangeStr) {
     if (typeof rangeStr !== 'string' || !rangeStr.includes('-')) return null;
     const parts = rangeStr.split('-').map(Number);
@@ -143,6 +138,7 @@ function parsePriceRange(rangeStr) {
         avg: (parts[0] + parts[1]) / 2
     };
 }
+
 function isRestaurantOpen(openHoursStr, checkTime) {
     if (typeof openHoursStr !== 'string') return false;
     const dayMap = { 'Su': 0, 'Mo': 1, 'Tu': 2, 'We': 3, 'Th': 4, 'Fr': 5, 'Sa': 6 };
@@ -188,24 +184,27 @@ function isRestaurantOpen(openHoursStr, checkTime) {
     return false;
 }
 
-// 8. 事件监听和主逻辑
+// 8. listen
 function clearSelectionAndResults() {
     selectedFeatures.clear();
     resultSource.clear();
     drawSource.clear();
     overlay.setPosition(undefined);
 }
+
 if (clearButton) {
     clearButton.addEventListener('click', clearSelectionAndResults);
 }
+
 closer.onclick = function () {
     overlay.setPosition(undefined);
     closer.blur();
     return false;
 };
+
 draw.on('drawstart', clearSelectionAndResults);
 draw.on('drawend', function (event) {
-    const drawnPolygon = event.feature.getGeometry(); // drawnPolygon 已经是一个 Geometry 对象
+    const drawnPolygon = event.feature.getGeometry();
     const allFeatures = restaurantsSource.getFeatures();
     const selected = [];
     allFeatures.forEach(feature => {
@@ -230,12 +229,12 @@ draw.on('drawend', function (event) {
 
         selected.forEach(feature => {
             const props = feature.getProperties();
-            const name = props.name || '未知名称';
+            const name = props.name || 'NA';
             if (isRestaurantOpen(props.open_hours, checkTime)) {
                 openNowCount++;
                 openRestaurantNames.push(name);
             }
-            const type = props.type || '其他';
+            const type = props.type || 'Other';
             if (!cuisineMap.has(type)) {
                 cuisineMap.set(type, []);
             }
@@ -278,9 +277,9 @@ draw.on('drawend', function (event) {
             <p><strong>Cuisine summary:</strong></p>
             <ul>${cuisineHtml || '<li>No data</li>'}</ul>
             <hr>
-            <p><strong>Average price</strong> ${avgPrice}</p>
-            <p><strong>Lowest price range:</strong> ${minPrice.name} (${minPrice.range})</p>
-            <p><strong>Highest price range:</strong> ${maxPrice.name} (${maxPrice.range})</p>
+            <p><strong>Average price:</strong> ${avgPrice} kr</p>
+            <p><strong>Lowest price range:</strong> ${minPrice.name} (${minPrice.range}) kr</p>
+            <p><strong>Highest price range:</strong> ${maxPrice.name} (${maxPrice.range}) kr</p>
             <hr>
             <p><strong>Lowest rating:</strong> ${minRating.name} (${minRating.value})</p>
             <p><strong>Highest rating:</strong> ${maxRating.name} (${maxRating.value})</p>
@@ -298,16 +297,16 @@ draw.on('drawend', function (event) {
         resultSource.addFeature(resultFeature);
 
     } else {
-        content.innerHTML = '<p>未选中任何POI点。</p>';
+        content.innerHTML = '<p>No POI selected。</p>';
         const extent = drawnPolygon.getExtent();
         const centerCoordinate = [(extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2];
         overlay.setPosition(centerCoordinate);
     }
     drawSource.clear();
 });
+
 map.on('singleclick', function (evt) {
     const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
-        // 判断是否是餐厅点
         if (layer === restaurantsLayer) {
             return feature;
         }
@@ -316,13 +315,11 @@ map.on('singleclick', function (evt) {
 
     if (feature) {
         const props = feature.getProperties();
-        console.log(props)
         const name = props.name || 'N/A';
         const openHours = props.open_hours || 'N/A';
         const rating = props.rating || 'N/A';
         const price = props.price_rang || 'N/A';
         const type = props.type || 'N/A';
-
         content.innerHTML = `
       <h3>${name}</h3>
       <p><strong>Type:</strong>${type}</p>
@@ -334,24 +331,21 @@ map.on('singleclick', function (evt) {
     }
 });
 
-// **********************************************
-// 9. 数据加载
-// **********************************************
+// 9. load data
 function loadRoadsData() {
-    // typeName 已更新为您提供的图层名。
     const wfsUrl = '/geoserver-proxy/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=group6:roads_all_wgs84&outputFormat=application/json';
 
     fetch(wfsUrl)
         .then(response => response.json())
         .then(data => {
             const features = new GeoJSON().readFeatures(data, {
-                dataProjection: 'EPSG:4326', // 修正了WGS84对应的投影代码
+                dataProjection: 'EPSG:4326',
                 featureProjection: 'EPSG:3857',
             });
             roadSource.addFeatures(features);
         })
         .catch(error => {
-            console.error("道路数据加载失败：", error);
+            console.error("error", error);
         });
 }
 
@@ -366,17 +360,14 @@ function loadRestaurantsData() {
                 featureProjection: 'EPSG:3857',
             });
             restaurantsSource.addFeatures(features);
-            draw.setActive(true); // 餐厅数据加载成功后，激活绘制工具
+            draw.setActive(true);
         })
         .catch(error => {
             console.error("fail", error);
         });
 }
 
-// **** 新增 ******
-// 加载边界数据的函数
 function loadBoundaryData() {
-    // 这就是修正后的正确地址
     const wfsUrl = '/geoserver-proxy/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=group6:export&outputFormat=application/json';
 
     fetch(wfsUrl)
@@ -393,8 +384,6 @@ function loadBoundaryData() {
         });
 }
 
-
-// 页面加载时，同时加载两种数据
 loadRestaurantsData();
 loadBoundaryData();
 loadRoadsData();
