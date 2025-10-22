@@ -2,7 +2,7 @@ import './style.css';
 import {Map as OlMap, View} from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
-import {fromLonLat} from 'ol/proj';
+import {fromLonLat, toLonLat} from 'ol/proj';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
@@ -12,10 +12,14 @@ import Draw, {createBox} from 'ol/interaction/Draw';
 import Select from 'ol/interaction/Select';
 import {altKeyOnly, never} from 'ol/events/condition';
 import Overlay from 'ol/Overlay';
+import Point from 'ol/geom/Point';
+import {Feature as OlFeature} from 'ol';
 
 // 1. constant variable and style
 const lund_lon_lat = [13.1932, 55.7058];
 const lund_center = fromLonLat(lund_lon_lat);
+const ORIGIN_LONLAT = [13.20072, 55.70886];
+const AUTO_FIT_ROUTE = false;
 
 const poiStyle = new Style({
     image: new Circle({
@@ -24,7 +28,6 @@ const poiStyle = new Style({
         stroke: new Stroke({color: 'red', width: 2})
     })
 });
-//hahaha
 const highlightStyle = new Style({
     image: new Circle({
         radius: 4,
@@ -45,6 +48,10 @@ const roadStyle = new Style({
         color: 'rgba(128, 128, 128, 0.8)', // 灰色半透明的线
         width: 1.5
     })
+});
+
+const routeLineStyle = new Style({
+    stroke: new Stroke({ color: '#1168ff', width: 6 })
 });
 
 // 2. data source and create layer
@@ -80,6 +87,29 @@ const resultLayer = new VectorLayer({
     source: resultSource
 });
 
+const originSource = new VectorSource();
+const originLayer = new VectorLayer({
+    source: originSource,
+    style: new Style({
+        image: new Circle({
+            radius: 6,
+            fill: new Fill({color: 'white'}),
+            stroke: new Stroke({color: '#000', width: 2})
+        })
+    })
+});
+
+originSource.addFeature(new OlFeature({
+    geometry: new Point(fromLonLat(ORIGIN_LONLAT)),
+    name: 'GIS Centre'
+}));
+
+const routeSource = new VectorSource();
+const routeLayer = new VectorLayer({
+    source: routeSource,
+    style: routeLineStyle
+});
+
 // 3. HTML and Overlay
 const container = document.getElementById('popup');
 const content = document.getElementById('popup-content');
@@ -87,7 +117,7 @@ const closer = document.getElementById('popup-closer');
 const clearButton = document.getElementById('clear-selection');
 const overlay = new Overlay({
     element: container,
-    autoPan: true,
+    autoPan: false,
     autoPanAnimation: {duration: 250},
 });
 
@@ -100,7 +130,9 @@ const map = new OlMap({
         boundaryLayer,
         restaurantsLayer,
         drawLayer,
-        resultLayer
+        resultLayer,
+        originLayer,
+        routeLayer
     ],
     view: new View({center: lund_center, zoom: 13})
 });
@@ -189,6 +221,7 @@ function clearSelectionAndResults() {
     selectedFeatures.clear();
     resultSource.clear();
     drawSource.clear();
+    routeSource.clear();
     overlay.setPosition(undefined);
 }
 
@@ -305,14 +338,28 @@ draw.on('drawend', function (event) {
     drawSource.clear();
 });
 
-map.on('singleclick', function (evt) {
+async function fetchRouteFoot(lon1, lat1, lon2, lat2) {
+    const url =
+        `https://router.project-osrm.org/route/v1/foot/${lon1},${lat1};${lon2},${lat2}` +
+        `?overview=full&geometries=geojson&alternatives=true&steps=false` +
+        `&radiuses=150;150`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes?.length) throw new Error('No route');
+
+    let best = data.routes[0];
+    for (const r of data.routes) if (r.distance < best.distance) best = r;
+    return best;
+}
+
+map.on('singleclick', async function (evt) {
     const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
         if (layer === restaurantsLayer) {
             return feature;
         }
         return null;
     });
-
     if (feature) {
         const props = feature.getProperties();
         const name = props.name || 'N/A';
@@ -328,6 +375,28 @@ map.on('singleclick', function (evt) {
       <p><strong>Price:</strong> ${price}</p>
     `;
         overlay.setPosition(evt.coordinate);
+        try {
+            const dest3857 = feature.getGeometry().getCoordinates();
+            const [dlon, dlat] = toLonLat(dest3857);     // → [lon, lat]
+            const [olon, olat] = ORIGIN_LONLAT;
+
+            const route = await fetchRouteFoot(olon, olat, dlon, dlat);
+
+            routeSource.clear();
+            const routeFeat = new GeoJSON().readFeature(route.geometry, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: 'EPSG:3857'
+            });
+            routeFeat.set('distance_km', (route.distance / 1000).toFixed(2));
+            routeFeat.set('duration_min', Math.round(route.duration / 60));
+            routeSource.addFeature(routeFeat);
+            if (AUTO_FIT_ROUTE) {
+                map.getView().fit(routeSource.getExtent(), { padding: [40, 40, 40, 40], maxZoom: 17 });
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Routing failed. Try again later.');
+        }
     }
 });
 
