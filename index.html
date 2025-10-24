@@ -4,16 +4,46 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="https://openlayers.org/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Using OpenLayers with Vite</title>
+  <title>All the delicious foods, please!</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .title {
+      height: 25px;
+      width: 89%;
+      background: linear-gradient(to right, rgba(0, 51, 102, 0.6), rgba(0, 100, 0, 0.6));
+      z-index: 9999 !important;
+      position: absolute;
+      bottom: 0px;
+      color: white;
+      padding-left: 10px;
+    }
+
+    .button {
+      position: absolute;
+      top: 9px;
+      left: 50px;
+      z-index: 1000;
+      height: 30px;
+      width: 120px;
+      background-color: white;
+      border: rgba(102, 102, 102, 0.4) 2px solid;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-<button id="clear-selection" style="position: absolute; top: 10px; left: 60px; z-index: 1000; height: 30px; width: 120px;">
-  clear results
+<button id="clear-selection" class="button">
+  Clear results
 </button>
-<div id="map"></div>
-<script type="module" src="main.js"></script>
 
+<div id="map">
+  <div class="title">
+    <span>All the delicious foods, please!</span>
+    <span style="float: right; margin-right: 20px;">Developed by: Pengfu Yao; Yang Hu; Zihui Yang [Group6]</span>
+  </div>
+</div>
+<script type="module" src="main.js"></script>
 <div id="popup" class="ol-popup">
   <a href="#" id="popup-closer" class="ol-popup-closer"></a>
   <div id="popup-content"></div>
