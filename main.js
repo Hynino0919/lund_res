@@ -45,7 +45,7 @@ const boundaryStyle = new Style({
 
 const roadStyle = new Style({
     stroke: new Stroke({
-        color: 'rgba(128, 128, 128, 0.8)', // 灰色半透明的线
+        color: 'rgba(128, 128, 128, 0.8)',
         width: 1.5
     })
 });
@@ -61,7 +61,7 @@ const restaurantsLayer = new VectorLayer({
     style: poiStyle
 });
 
-const boundarySource = new VectorSource(); // 边界图层的数据源
+const boundarySource = new VectorSource();
 const boundaryLayer = new VectorLayer({
     source: boundarySource,
     style: boundaryStyle
@@ -377,7 +377,7 @@ map.on('singleclick', async function (evt) {
         overlay.setPosition(evt.coordinate);
         try {
             const dest3857 = feature.getGeometry().getCoordinates();
-            const [dlon, dlat] = toLonLat(dest3857);     // → [lon, lat]
+            const [dlon, dlat] = toLonLat(dest3857);
             const [olon, olat] = ORIGIN_LONLAT;
 
             const route = await fetchRouteFoot(olon, olat, dlon, dlat);
